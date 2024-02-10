@@ -1,0 +1,171 @@
+---
+title: "Assignment 2 - Beuaty Products Promotions"
+output:
+  html_document: default
+---
+
+```{r include=FALSE}
+
+install.packages("knitr",repos = "http://cran.us.r-project.org" )
+install.packages("dplyr", repos = "http://cran.us.r-project.org")
+install.packages("kableExtra",repos = "http://cran.us.r-project.org")
+install.packages("readxl",repos = "http://cran.us.r-project.org")
+install.packages("forecast",repos = "http://cran.us.r-project.org")
+install.packages("tseries",repos = "http://cran.us.r-project.org")
+install.packages("vars",repos = "http://cran.us.r-project.org")
+install.packages("lme4",repos = "http://cran.us.r-project.org")
+
+##load the packages that are needed for this session
+
+library(knitr)
+library(dplyr)
+library(kableExtra)
+library(readxl)
+library(forecast)
+library(tseries)
+library(vars)
+library(lme4)
+
+```
+
+</br>
+
+### Introduction - Initial Data Exploration
+
+#### Loading the data
+
+```{r}
+
+# load the datasets
+beauty <- read_xlsx("scanpro_beauty.xlsx")
+
+kable(head(beauty), caption = "Table 1 Beauty Raw Data")
+
+```
+
+### Modeling the Sales of the Beauty Goods
+
+Recall that the scan\*pro model follows the following structure.
+
+![](scanpro.png)
+
+```{r}
+# Basic summary stats about the dataset
+summary(beauty)
+```
+
+We observe we have three independent variables: Price, Presence and Media. All of them are continuous.
+
+To create a model to predict weekly sales, complete the following steps:
+
+1.  We will rearrange the price to be the price divided by the media price of the entire sample. That we raise to the power of *elasticity*, which will be our price elasticity effect
+
+2.  Then, we will use $\gamma_l$ to represent the effects of presence (encoding display) and media (encoding feature), where $\gamma_1$ is added to the power of *presence*, $\gamma_2$ to the power of *media*
+
+Therefore, the simplest model looks like:
+
+$$ (1)\  Sales = Constant * (Price)^{elasticity} * (\gamma_1)^{presence} * (\gamma_2)^{media}$$
+
+We transform equation 2 by taking the logarithm of it and estimate a linear model. Specifically, we have:
+
+$$ (2)\ Log(Sales) = Constant' + elasticity* Log(Price) + {presence} * Log(\gamma_1) + {media} * Log(\gamma_2) $$
+
+We fit a linear regression model to this simple model:
+
+```{r}
+
+# take logarithm of each variable, excpet "Display"
+beauty$log_sales <- log(beauty$sales)
+beauty$log_price <- log(beauty$price)
+beauty$log_presence <- log(beauty$presence) 
+beauty$log_media <- log(beauty$media)
+
+# estimate linear model
+scanpro <- lm(log_sales~log_price+log_presence+log_media, data = beauty)
+summary(scanpro)
+
+
+```
+
+We can derive the following insights from this:
+
+1.  **Effectiveness of Marketing Efforts:**
+
+    -   **Price (`log_price`):** A one percent increase in the average price of the beauty product is associated with approximately a 3.85% decrease in monthly sales volume (in log scale). The negative coefficient for price indicates that as the price of the product increases, the sales volume tends to decrease. This is a common finding in economics and marketing where consumers are often sensitive to price changes.
+
+    -   **Presence (`log_presence`):** A one percent increase in retailer shelf presence index is associated with approximately a 2.91% increase in monthly sales volume (in log scale). The positive coefficient for presence suggests that increased visibility on retailer shelves tends to lead to higher sales volume. This highlights the importance of having a strong presence in physical retail spaces.
+
+    -   **Media (`log_media`):** The coefficient for media coverage index (**`log_media`**) is negative but not statistically significant at the 5% level. This suggests that media coverage might not have a significant direct effect on monthly sales volume in this model. Although not statistically significant in this model, media coverage might still play an important role in brand awareness, which could indirectly influence sales through other channels or over a longer time frame.
+
+Although we were able to derive some useful insights from this preliminary analysis, we ignored a potential key factor: The interaction between the variables. In order to check this we will use the stepwise approach to add variables and interactions interactively, and use the AIC metric to decide on the best combination:
+
+```{r}
+## Load necessary packages
+install.packages("MASS")
+library(MASS)
+
+# Fit initial model with all possible variables and interactions
+initial_model <- lm(log_sales ~ log_price * log_presence * log_media, data = beauty)
+
+# Perform stepwise selection (forward and backward) with AIC criterion
+step_model <- stepAIC(initial_model, direction = "both", trace = FALSE)
+
+# Print the selected model
+summary(step_model)
+
+```
+
+After performing stepwise selection and including interaction terms in the model, the interpretation of the coefficients changes slightly:
+
+1.  **Intercept (`(Intercept)`):** When all predictor variables are at their reference levels (i.e., log_price, log_presence, and log_media are zero), the estimated log of sales volume is approximately 447.477.
+
+2.  **Main Effects:**
+
+    -   **log_price:** A one-unit increase in the log of average price is associated with a decrease of approximately 74.691 in the estimated log of sales volume, holding other variables constant.
+
+    -   **log_presence:** A one-unit increase in the log of retailer shelf presence index is associated with a decrease of approximately 136.360 in the estimated log of sales volume, holding other variables constant.
+
+    -   **log_media:** A one-unit increase in the log of media coverage index is associated with an increase of approximately 47.889 in the estimated log of sales volume, holding other variables constant.
+
+3.  **Interaction Effects:**
+
+    -   **log_price:log_presence:** The interaction effect between log_price and log_presence indicates how the relationship between log_price and log_presence jointly affects the estimated log of sales volume. For example, a one-unit increase in log_price combined with a one-unit increase in log_presence is associated with an increase of approximately 23.034 in the estimated log of sales volume, holding other variables constant. Although we expect a negative relationship between price and sales, one possible explanation for this effect is that a price increase with an increase in the store's presence increases the brand's value perception.
+
+    -   **log_price:log_media:** Similar to the previous interaction term, this interaction effect indicates how the joint relationship between log_price and log_media affects the estimated log of sales volume. For example, a one-unit increase in log_price combined with a one-unit increase in log_media is associated with a decrease of approximately 8.015 in the estimated log of sales volume, holding other variables constant. We can derive the same conclusion for this coefficient being positive as with the interaction term **log_price:log_presence**
+
+4.  **Model Fit:**
+
+    -   The adjusted R-squared value of 0.9007 indicates that approximately 90.07% of the variability in the log of sales volume is explained by the model. This value is also greater than what was achieved with the simpler model, indicating an improvement by adding the interaction terms.
+
+    -   The F-statistic is significant (p-value \< 2.2e-16), suggesting that the overall model is statistically significant in explaining the variability in the log of sales volume.
+
+There is another aspect we have not explored yet, which is the autocorrelation of the time series. If we plot the ACF of the residuals of the best model, we see that there are significant autocorrelations at lags 1 and 2.
+
+```{r}
+# ACF plot of residuals
+acf(step_model$residuals)
+```
+
+```{r}
+# Plot the time series for 'Sales'
+ggplot(beauty, aes(x = month, y = sales)) +
+  geom_line() +
+  labs(title = "Time Series of Sales",
+       x = "Month",
+       y = "Sales") +
+  theme_minimal()
+```
+
+If we look at the time series of sales, we see it follows a very clear upward trend, with a significant spike from months 20 to 40. Looking at the price time series, we can see that this spike can be explained by an aggressive reduction in the price. However, lags are still reasonable in this model, because marketing and display efforts can take effect in following periods. We will create new variables for the two lags and test again for the best model using the step-wise method:
+
+1.  **Ways to Improve Model Performance:**
+
+    -   **Address Autocorrelation:** Check for autocorrelation in the residuals and consider addressing it if present, as it can affect the reliability of the model estimates.
+
+    -   **Include Lagged Variables:** Incorporate lagged variables if there are time lags in the effects of marketing efforts on sales. For example, media coverage in the previous month might have a delayed effect on current sales.
+
+    -   **Explore Non-linear Relationships:** Explore non-linear relationships between variables using polynomial terms or other functional forms if there are indications that the relationships are not strictly linear.
+
+    -   **Consider Additional Variables:** Explore adding additional variables such as seasonality, competitor data, or macroeconomic indicators that could potentially influence sales volume.
+
+    -   **Address Autocorrelation:** Check for autocorrelation in the residuals and consider addressing it if present, as it can affect the reliability of the model estimates.

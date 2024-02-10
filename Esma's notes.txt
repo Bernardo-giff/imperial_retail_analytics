@@ -1,0 +1,34 @@
+Hello everyone,
+
+Hope you are well. I wanted publish great questions from the live session as well as some other related questions, and my answers are as below:
+
+Q1: if the company had 5 different display activities and 5 different feature activities, then the model would have one dummy for each, and an interaction dummy for each, is that correct?
+
+If the variables are 1/0 in nature, qe would define have one dummy for each display activity but in the model we would include only 4 dummy variables (to avoid dummy variable trap). If we prefer to add interaction terms, I suggest adding them step by step (one by one) and see how much they are relevant (significant). You might also need to check joint significance with the dummy variables as well here. 
+
+
+Q2: In the assignment, feature and display advertising is continuous, and not a dummy. It is the monthly retailer shelf presence index (display) and the monthly media coverage index (feature). how do incorporate this into the model?
+
+We can include those variables as continues variables. Then our interpretation would shift, we would now investigate the effect of increase in those promotion activities rather than whether they are used or not (which would be the casein dummy variables).
+
+Q3:  my teammates and I were wondering regarding group assignment 2. The assignment seems lighter in terms of coding. We assume this is because the teaching team is looking for more insights of analysing the data. Is our assumption correct?
+
+In assignment 2, there are expectations around choosing a good model, applying scan pro model and interpretation of the results , similar to the live session 2. However, as you have also said, the insights and marketing implications are very important.
+
+Q4: In S&E, we discussed using multilinear regression for sales forecasting. In session 3, we saw that we can determine the effect of the marketing mix on sales through the scan pro model, which can be put into linear form using log transformation. If our dataset contains information relating to feature/display advertising and competitor pricing, then we could set up two regression models: one in base form and one in log form. How would these two models compare and which would be more suitable for forecasting? I suppose that if we wanted to include other dependent variables such as demographic or socio-economic data, then we would have to set up the model as is discussed in S&E (MLR).
+
+
+Indeed, You can include other variables in your model as in S&E. We typically call these as control variables. To decide on the functional form, we can use some approaches: 
+
+(1) The RESET test specifically checks if there is an issue with the functional form of your model (essentially by performing an F-test for quadratic and cubic forms of all variables). 
+
+(2) All of AIC, BIC & Adjusted R^2 tell you whether you should be including further variables (not just further powers of all the variables already in the model). If the AIC / BIC get lower and the adjusted R^2 gets higher when you add a new variable, then you are adding something useful to the model. These three measures should give fairly similar results.
+
+(3) The t-test should only be used at the end to tell you which variables are significant. I would not use it when deciding which variables to include in the model, since you might get omitted variable bias, and a variable that initially looked promising can suddenly be insignificant in the final model.
+
+Thus, in a systematic approach when you start building a multiple linear regression model from scratch, we would use stepwise selection first to see which variables in your dataset are relevant, then run the RESET test to see if the functional form is good (if not, try including quadratics or logs) and finally look at the significance of variables in the model with t tests and F tests.
+
+
+Best wishes,
+
+Esma 
